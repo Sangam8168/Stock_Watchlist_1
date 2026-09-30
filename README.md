@@ -39,8 +39,8 @@ don't clear each other's badges — and the same feed goes out as a daily email.
 
 | Requirement | Where |
 |---|---|
-| Create & manage a watchlist | `/watchlist`, `lib/actions/watchlist.actions.ts` — add / remove / edit thesis, 5 categories with review cadences, search-to-add |
-| View latest market information | `lib/actions/market-data.actions.ts` — 15-min poll → per-symbol snapshots (price, day %, 52-wk range, P/E, market cap, next earnings, news); TradingView charts on the dashboard and stock pages |
+| Create & manage a watchlist | `/watchlist`, `lib/actions/watchlist.actions.ts` — add / remove / edit thesis, named lists, 5 categories with review cadences, search-to-add across **US, NSE and BSE** |
+| View latest market information | `lib/market-data/snapshot.ts` — 15-min poll → per-symbol snapshots (price, day %, 52-wk range, P/E, market cap, next earnings, news), routed per venue so Indian listings quote in ₹; TradingView charts on the dashboard and stock pages |
 | Return later & see what changed | `lib/changes/detect.ts` (pure, unit-tested engine) + per-device `SeenState` + "While you were away" digest + `Change history` timeline + daily email — see below |
 
 ### "Return later and see what changed", in five layers
@@ -53,7 +53,7 @@ This is the requirement the whole app is built around, so it's answered more tha
 4. **The full record** — the **History** view (`ChangeHistory`) is the chronological feed over 24h / 7d / 30d / 90d, grouped by day, *including events you've already reviewed*. The digest empties as you triage it; the history never does.
 5. **When you don't come back** — the daily Inngest digest email, plus `flagStaleThesesDaily`, which nudges theses you haven't reviewed in a while.
 
-Marking things seen is explicit (`Mark all reviewed` / per-symbol `Reviewed`), and watermarks only ever move forward (`$max`), so two devices can't hide events from each other. A brand-new device is seeded from your furthest-along device (`ensureSeenBaseline`) instead of replaying three weeks of history you already triaged on your laptop.
+Marking things seen happens two ways: explicitly (`Mark all reviewed` / per-symbol `Reviewed`), and by **actually reading them** — a group counts as read once it has been at least half on screen for 1.5 continuous seconds in a foreground tab. Watermarks only ever move forward (`$max`), so two devices can't hide events from each other. A brand-new device is seeded from your furthest-along device (`ensureSeenBaseline`) instead of replaying three weeks of history you already triaged on your laptop.
 
 ### Design decisions
 
@@ -228,7 +228,11 @@ The honest gap is that the React layer is verified by hand, not by test.
 |---|---|
 | Change engine (+ tests) | `lib/changes/detect.ts`, `lib/changes/detect.test.ts` |
 | Ingestion + detection pipeline | `lib/watchlist/pipeline.ts` |
-| Snapshot builder (Finnhub) | `lib/actions/market-data.actions.ts` |
+| Snapshot builder (**not** a server action) | `lib/market-data/snapshot.ts` |
+| Indian market provider (NSE / BSE) | `lib/actions/yahoo.actions.ts` |
+| Venue, market hours, currency | `lib/changes/exchange.ts` |
+| Honest-silence check | `lib/changes/coverage.ts` |
+| Reviewer test bench | `components/watchlist/TestBench.tsx` |
 | Market-hours / trading-day math | `lib/market.ts` |
 | Watchlist reads/writes + digest | `lib/actions/watchlist.actions.ts` |
 | Cron jobs | `lib/inngest/functions.ts` |
